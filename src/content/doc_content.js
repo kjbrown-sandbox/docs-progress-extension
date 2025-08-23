@@ -43,6 +43,46 @@ check();
 // Respond to direct requests from popup
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
    if (msg && msg.type === "REQUEST_WORD_COUNT") {
-      sendResponse({ count: lastCount === -1 ? wordCount(getDocText()) : lastCount });
+         // Try to fetch canonical text from background (Docs API) on explicit requests.
+         const m = location.href.match(/\/d\/([a-zA-Z0-9-_]+)/);
+         if (m) {
+            const documentId = m[1];
+            chrome.runtime.sendMessage({ type: "FETCH_DOC_BY_ID", documentId }, (resp) => {
+               if (resp && resp.ok && typeof resp.text === "string") {
+                  const t = resp.text;
+                  const c = wordCount(t);
+                  lastCount = c;
+                  sendResponse({ count: c });
+               } else {
+                  // fallback to DOM heuristic
+                  const c2 = wordCount(getDocText());
+                  lastCount = c2;
+                  sendResponse({ count: c2, error: resp && resp.error });
+               }
+            });
+            return true; // will respond asynchronously
+         }
+         // No documentId found — return cached or DOM-derived value
+         sendResponse({ count: lastCount === -1 ? wordCount(getDocText()) : lastCount });
    }
 });
+
+// Try to request canonical text from background (Docs API). If successful, use that to compute count and send update.
+function requestCanonicalText() {
+   const m = location.href.match(/\/d\/([a-zA-Z0-9-_]+)/);
+   if (!m) return;
+   const documentId = m[1];
+   chrome.runtime.sendMessage({ type: "FETCH_DOC_BY_ID", documentId }, (resp) => {
+      if (resp && resp.ok && typeof resp.text === "string") {
+         const t = resp.text;
+         const c = wordCount(t);
+         if (c !== lastCount) {
+            lastCount = c;
+            chrome.runtime.sendMessage({ type: "DOC_WORD_COUNT", count: c });
+         }
+      }
+   });
+}
+
+// request canonical text once on load
+requestCanonicalText();
