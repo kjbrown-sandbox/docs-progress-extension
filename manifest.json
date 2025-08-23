@@ -3,7 +3,7 @@
    "name": "Docs Progress",
    "description": "Writing metrics and progress UI for Google Docs (word counts, progress bars, live updates).",
    "version": "0.1.0",
-   "permissions": ["storage", "scripting", "activeTab", "identity"],
+   "permissions": ["storage", "scripting", "activeTab", "identity", "identity.email"],
    "host_permissions": ["https://docs.google.com/*"],
    "action": {
       "default_popup": "src/popup/popup.html",

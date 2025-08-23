@@ -52,4 +52,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
          .catch((err) => sendResponse({ ok: false, error: err.message || String(err) }));
       return true; // keep channel open for async response
    }
+   // UI-driven auth helpers
+   if (msg && msg.type === "GET_PROFILE") {
+      chrome.identity
+         .getProfileUserInfo()
+         .then((info) => sendResponse({ ok: true, profile: info }))
+         .catch((e) => sendResponse({ ok: false, error: String(e) }));
+      return true;
+   }
+   if (msg && msg.type === "SIGN_OUT") {
+      // remove cached token and respond
+      chrome.identity.getAuthToken({ interactive: false }, (tkn) => {
+         if (tkn) {
+            chrome.identity.removeCachedAuthToken({ token: tkn }, () => {
+               sendResponse({ ok: true });
+            });
+         } else sendResponse({ ok: true });
+      });
+      return true;
+   }
+   if (msg && msg.type === "SET_BADGE") {
+      const text = String(msg.text || "");
+      chrome.action.setBadgeBackgroundColor({ color: "#1a73e8" });
+      chrome.action.setBadgeText({ text: text });
+      sendResponse({ ok: true });
+   }
+   if (msg && msg.type === "TRIGGER_AUTH") {
+      // trigger interactive auth to prompt consent
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+         if (chrome.runtime.lastError)
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+         else sendResponse({ ok: true, token });
+      });
+      return true;
+   }
 });
