@@ -4,11 +4,11 @@ A Chrome extension to surface live writing metrics and progress bars inside Goog
 
 What this scaffold contains:
 
-- `manifest.json` - extension manifest (MV3)
-- `src/content/doc_content.js` - initial content script that reads Google Docs content and computes word count
-- `src/background.js` - background service worker
-- `src/popup/` - popup UI files
-- `icons/` - placeholder SVG icon
+-  `manifest.json` - extension manifest (MV3)
+-  `src/content/doc_content.js` - initial content script that reads Google Docs content and computes word count
+-  `src/background.js` - background service worker
+-  `src/popup/` - popup UI files
+-  `icons/` - placeholder SVG icon
 
 How to use
 
