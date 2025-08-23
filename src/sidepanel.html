@@ -1,10 +1,44 @@
 <!DOCTYPE html>
 <html>
    <head>
-      <title>My Sidepanel</title>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <title>Docs Progress</title>
+      <style>
+         body {
+            font-family: Arial, sans-serif;
+            width: 320px;
+            padding: 12px;
+         }
+         .count {
+            font-size: 32px;
+            font-weight: bold;
+         }
+         .label {
+            color: #666;
+            font-size: 12px;
+         }
+         .bar {
+            height: 12px;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 8px;
+         }
+         .bar > .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1a73e8, #4caf50);
+            width: 0%;
+         }
+      </style>
    </head>
    <body>
-      <h1>All sites sidepanel extension</h1>
-      <p>This side panel is enabled on all sites</p>
+      <div>
+         <div class="label">Today</div>
+         <div class="count" id="wordCount">—</div>
+         <div class="bar"><div class="fill" id="fill"></div></div>
+         <div style="margin-top: 8px"><button id="refresh">Refresh</button></div>
+      </div>
+      <script src="sidepanel.js"></script>
    </body>
 </html>
