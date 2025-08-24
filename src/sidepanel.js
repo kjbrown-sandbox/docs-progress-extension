@@ -1,8 +1,8 @@
 // Popup script: requests the latest word count from the active tab
 
-const countEl = document.getElementById("wordCount");
-const fillEl = document.getElementById("fill");
-const refreshBtn = document.getElementById("refresh");
+// const countEl = document.getElementById("wordCount");
+// const fillEl = document.getElementById("fill");
+// const refreshBtn = document.getElementById("refresh");
 
 function setCount(n) {
    countEl.textContent = n;

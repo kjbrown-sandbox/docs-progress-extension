@@ -134,3 +134,9 @@ Example:
 45/100 = You wrote a bit, but lots of idle time and repetitive wording.
 
 People will chase that score the way they chase steps.
+
+---
+
+Looks like there's a storage limit in the Chrome extension of about 10 MB maybe?
+Regardless, probably at some point would be wise to store a compressed version of the book instead of the true 100k+ words.
+Just be sure to do some load testing with really large books, see when it breaks.
