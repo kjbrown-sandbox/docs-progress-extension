@@ -22,3 +22,9 @@ How is this gonna scale??
 -  Store in cloud for longer-term storage?
 -  Enable unlimited storage??
 -  How much data in general is this going to take up?
+
+# Competitors/similar things to look at
+
+-  https://wordcounter.net/
+-  Scrivener
+-  Trackbear

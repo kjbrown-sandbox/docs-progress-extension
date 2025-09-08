@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Docs Progress</title>
+      <style>
+         body {
+            font-family: Roboto, Arial, sans-serif;
+            margin: 12px;
+         }
+         #count {
+            font-size: 40px;
+            font-weight: 600;
+         }
+         #label {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 8px;
+         }
+      </style>
+   </head>
+   <body>
+      <div id="label">Live word count (updates ~once/sec)</div>
+      <div id="count">Loading…</div>
+      <div id="error" style="color: #b00020; margin-top: 8px; display: none"></div>
+      <div style="margin-top: 10px"><button id="refreshBtn">Refresh now</button></div>
+
+      <script>
+         let intervalId = null;
+
+         function showError(msg) {
+            const el = document.getElementById("error");
+            if (!el) return;
+            el.style.display = "block";
+            el.textContent = msg || "Unknown error";
+         }
+
+         function clearError() {
+            const el = document.getElementById("error");
+            if (!el) return;
+            el.style.display = "none";
+            el.textContent = "";
+         }
+
+         function updateOnce() {
+            clearError();
+            google.script.run
+               .withSuccessHandler((res) => {
+                  if (res && typeof res.words === "number") {
+                     document.getElementById("count").textContent = res.words;
+                  } else {
+                     document.getElementById("count").textContent = "—";
+                  }
+               })
+               .withFailureHandler((err) => {
+                  // surface a helpful message so you can see permission/runtime errors
+                  console.error("getDocumentWordCount failed", err);
+                  document.getElementById("count").textContent = "—";
+                  showError(err && err.message ? err.message : String(err));
+               })
+               .getDocumentWordCount();
+         }
+
+         function startPolling() {
+            updateOnce();
+            if (intervalId) clearInterval(intervalId);
+            intervalId = setInterval(updateOnce, 1000);
+         }
+
+         // Start when the sidebar loads
+         window.addEventListener("load", startPolling);
+         document.getElementById("refreshBtn").addEventListener("click", updateOnce);
+
+         // Stop polling if the sidebar is unloaded
+         window.addEventListener("unload", () => {
+            if (intervalId) clearInterval(intervalId);
+         });
+      </script>
+   </body>
+</html>

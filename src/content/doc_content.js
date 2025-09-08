@@ -1,167 +1,152 @@
-// // Content script for Google Docs - computes a live word count and sends it to the extension popup via runtime messages.
+// // Content script for Google Docs - read Docs' own word-count widget and update an overlay progress bar every second.
 
-// function getDocText() {
-//    // Google Docs uses an editable iframe-like structure; try to select the main content.
-//    const editor = document.querySelector('[role="main"]');
-//    if (!editor) return "";
-//    // Extract visible text nodes
-//    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
-//    let node;
-//    let text = "";
-//    while ((node = walker.nextNode())) {
-//       text += node.textContent + " ";
-//    }
-//    return text.replace(/\s+/g, " ").trim();
+// // default 2000 words
+// function getGoal() {
+//    const saved = localStorage.getItem("word_goal");
+//    return saved ? parseInt(saved, 10) : 2000;
 // }
 
-// function wordCount(text) {
-//    if (!text) return 0;
-//    return text.split(/\s+/).filter(Boolean).length;
+// function setGoal(value) {
+//    localStorage.setItem("word_goal", value);
 // }
 
-// let lastCount = -1;
+// function insert() {
+//    if (document.getElementById("word-progress")) return;
 
-// function check() {
-//    const text = getDocText();
-//    const count = wordCount(text);
-//    if (count !== lastCount) {
-//       lastCount = count;
-//       chrome.runtime.sendMessage({ type: "DOC_WORD_COUNT", count });
-//    }
-// }
+//    const container = document.createElement("div");
+//    container.id = "word-progress";
+//    container.style.position = "absolute";
+//    container.style.left = "50%";
+//    container.style.transform = "translateX(-50%)";
+//    container.style.top = "129px";
+// Content script for Google Docs - read Docs' own word-count widget and update an overlay progress bar every second.
 
-// // Observe mutations to update in near-real-time
-// const editorRoot = document.querySelector('[role="main"]');
-// if (editorRoot) {
-//    const obs = new MutationObserver(() => check());
-//    obs.observe(editorRoot, { childList: true, subtree: true, characterData: true });
-// }
+// default 2000 words
+function getGoal() {
+   const saved = localStorage.getItem("word_goal");
+   return saved ? parseInt(saved, 10) : 2000;
+}
 
-// // initial check
-// check();
+function setGoal(value) {
+   localStorage.setItem("word_goal", value);
+}
 
-// // Respond to direct requests from popup
-// chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-//    if (msg && msg.type === "REQUEST_WORD_COUNT") {
-//       // Try to fetch canonical text from background (Docs API) on explicit requests.
-//       const m = location.href.match(/\/d\/([a-zA-Z0-9-_]+)/);
-//       if (m) {
-//          const documentId = m[1];
-//          chrome.runtime.sendMessage({ type: "FETCH_DOC_BY_ID", documentId }, (resp) => {
-//             if (resp && resp.ok && typeof resp.text === "string") {
-//                const t = resp.text;
-//                const c = wordCount(t);
-//                lastCount = c;
-//                sendResponse({ count: c });
-//             } else {
-//                // fallback to DOM heuristic
-//                const c2 = wordCount(getDocText());
-//                lastCount = c2;
-//                sendResponse({ count: c2, error: resp && resp.error });
-//             }
-//          });
-//          return true; // will respond asynchronously
-//       }
-//       // No documentId found — return cached or DOM-derived value
-//       sendResponse({ count: lastCount === -1 ? wordCount(getDocText()) : lastCount });
-//    }
-// });
+function getWordCount() {
+   const container = document.getElementById("kix-documentmetrics-widget-content");
+   if (!container) return null;
 
-// // Try to request canonical text from background (Docs API). If successful, use that to compute count and send update.
-// function requestCanonicalText() {
-//    const m = location.href.match(/\/d\/([a-zA-Z0-9-_]+)/);
-//    if (!m) return;
-//    const documentId = m[1];
-//    chrome.runtime.sendMessage({ type: "FETCH_DOC_BY_ID", documentId }, (resp) => {
-//       if (resp && resp.ok && typeof resp.text === "string") {
-//          const t = resp.text;
-//          const c = wordCount(t);
-//          if (c !== lastCount) {
-//             lastCount = c;
-//             chrome.runtime.sendMessage({ type: "DOC_WORD_COUNT", count: c });
-//          }
-//       }
-//    });
-// }
+   const numberSpan = container.querySelector(".kix-documentmetrics-widget-number");
+   if (!numberSpan) return null;
 
-// // request canonical text once on load
-// requestCanonicalText();
+   const raw = numberSpan.innerText.trim().replace(/[\u00A0,]/g, "");
+   const count = parseInt(raw, 10);
+   return isNaN(count) ? null : count;
+}
 
-// // Inject overlay UI (progress bar + connect button)
-// function createOverlay() {
-//    if (document.getElementById("docs-progress-overlay")) return;
-//    const overlay = document.createElement("div");
-//    overlay.id = "docs-progress-overlay";
-//    overlay.style.position = "absolute";
-//    overlay.style.top = "145px";
-//    overlay.style.left = "50%";
-//    overlay.style.transform = "translateX(-50%)";
-//    overlay.style.zIndex = 999999;
-//    overlay.style.pointerEvents = "auto";
+function insert() {
+   if (document.getElementById("word-progress")) return;
 
-//    overlay.innerHTML = `
-//       <div id="dp-container" style="background: rgba(255,255,255,0.98); padding:2px 2px; width:520px; max-width:90vw;">
-//          <div style="display:flex; align-items:center; gap:12px; margin-top:10px">
-//             <div style="flex:1; height:14px; background:#f1f3f4; border-radius:8px; overflow:hidden;">
-//                <div id="dp-fill" style="height:100%; width:40%; background:rgba(26,115,232,0.8); transition: width 420ms ease;"></div>
-//             </div>
-//             <div id="dp-pct" style="min-width:56px; text-align:right; font-weight:600; color:#8a8a8a; font-size:13px">40%</div>
-//          </div>
-//          <div id="dp-goal" style="text-align:center; margin-top:10px; color:#8a8a8a; font-weight:600; font-size:14px">Daily goal: 2000 words</div>
-//       </div>
-//    `;
-//    document.body.appendChild(overlay);
+   const container = document.createElement("div");
+   container.id = "word-progress";
+   container.style.position = "absolute";
+   container.style.left = "50%";
+   container.style.transform = "translateX(-50%)";
+   container.style.top = "129px";
+   container.style.zIndex = 999999;
+   // avoid blocking the docs UI; enable interactions only inside inner box
+   container.style.pointerEvents = "none";
 
-//    // wire buttons
-//    document.getElementById("dp-connect").addEventListener("click", () => {
-//       chrome.runtime.sendMessage({ type: "TRIGGER_AUTH" }, (r) => {
-//          // background will open interactive auth via getAuthToken when needed; we can then request canonical text
-//          requestCanonicalText();
-//          updateProfileUI();
-//       });
-//    });
+   container.innerHTML = `
+		<div id="word-progress-inner" style="pointer-events:auto; background: rgba(255,255,255,0.98); padding:8px 12px; border-radius:10px; width:520px; max-width:90vw; box-shadow:0 6px 14px rgba(0,0,0,0.08);">
+			<div id="label" title="Click to set word goal" style="display:flex; flex-direction:column; gap:6px;">
+				<div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+					<div style="display:flex; align-items:center; gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+					<span id="status">Word count: 0 / 2000</span></div>
+					<div id="count-text" style="font-weight:600;color:#222">—</div>
+				</div>
+				<div style="font-size:12px; color:#666;">Progress: <span id="percent">0.00%</span></div>
+			</div>
+			<div id="bar" style="height:12px; background:#eee; border-radius:8px; overflow:hidden; margin-top:8px;"><div id="bar-fill" style="height:100%; width:0%; background:green; transition: width 300ms ease;"></div></div>
+		</div>
+	`;
 
-//    document.getElementById("dp-signout").addEventListener("click", () => {
-//       chrome.runtime.sendMessage({ type: "SIGN_OUT" }, (r) => {
-//          updateProfileUI();
-//       });
-//    });
+   document.body.appendChild(container);
 
-//    updateProfileUI();
-// }
+   // clicking the label sets the goal
+   const lbl = document.getElementById("label");
+   if (lbl) {
+      lbl.addEventListener("click", () => {
+         const current = getGoal();
+         const input = prompt("Set your word goal:", current);
+         if (input !== null) {
+            const newGoal = parseInt(input, 10);
+            if (!isNaN(newGoal) && newGoal > 0) {
+               setGoal(newGoal);
+               update();
+            } else {
+               alert("Please enter a valid number.");
+            }
+         }
+      });
+   }
+}
 
-// function updateProgressUI(count) {
-//    const pct = Math.min(100, Math.round((count / 2000) * 100));
-//    const fill = document.getElementById("dp-fill");
-//    if (fill) fill.style.width = pct + "%";
-//    const pctEl = document.getElementById("dp-pct");
-//    if (pctEl) pctEl.textContent = pct + "%";
-//    const countEl = document.getElementById("dp-count");
-//    if (countEl) countEl.textContent = String(count);
-//    // update badge
-//    chrome.runtime.sendMessage({ type: "SET_BADGE", text: String(count) });
-// }
+function update() {
+   const count = getWordCount();
+   const goal = getGoal();
+   const percentEl = document.getElementById("percent");
+   const barFill = document.getElementById("bar-fill");
+   const status = document.getElementById("status");
+   const countText = document.getElementById("count-text");
 
-// function updateProfileUI() {
-//    chrome.runtime.sendMessage({ type: "GET_PROFILE" }, (resp) => {
-//       const signedIn = resp && resp.ok && resp.profile && (resp.profile.email || resp.profile.id);
-//       const connectBtn = document.getElementById("dp-connect");
-//       const signoutBtn = document.getElementById("dp-signout");
-//       if (signedIn) {
-//          if (connectBtn) connectBtn.style.display = "none";
-//          if (signoutBtn) signoutBtn.style.display = "inline-block";
-//       } else {
-//          if (connectBtn) connectBtn.style.display = "inline-block";
-//          if (signoutBtn) signoutBtn.style.display = "none";
-//       }
-//    });
-// }
+   if (!percentEl || !barFill || !status) return; // UI not ready
 
-// createOverlay();
+   if (count === null) {
+      percentEl.textContent = "0%";
+      barFill.style.width = "0%";
+      barFill.style.backgroundColor = "gray";
+      status.textContent = 'Please enable "Tools -> Display word count while typing"';
+      if (countText) countText.textContent = "—";
+      return;
+   }
 
-// // update overlay when counts arrive
-// chrome.runtime.onMessage.addListener((msg) => {
-//    if (msg && msg.type === "DOC_WORD_COUNT") {
-//       updateProgressUI(msg.count);
-//    }
-// });
+   const percent = Math.min((count / goal) * 100, 100);
+   percentEl.textContent = percent.toFixed(2) + "%";
+   barFill.style.width = percent + "%";
+
+   if (percent < 40) {
+      barFill.style.backgroundColor = "red";
+   } else if (percent < 70) {
+      barFill.style.backgroundColor = "orange";
+   } else {
+      barFill.style.backgroundColor = "green";
+   }
+
+   status.textContent = `Word count: ${count} / ${goal}`;
+   if (countText) countText.textContent = String(count);
+
+   // Broadcast the count so side panel and others can receive it while open
+   if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+         chrome.runtime.sendMessage({ type: "DOC_WORD_COUNT", count });
+      } catch (e) {
+         // ignore
+      }
+   }
+}
+
+// Reply to explicit requests for the current word count (used by the side panel when it opens)
+if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg && msg.type === "REQUEST_WORD_COUNT") {
+         const count = getWordCount();
+         sendResponse({ count });
+      }
+   });
+}
+
+// initialize
+insert();
+update();
+// update every second
+setInterval(update, 1000);
